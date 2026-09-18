@@ -80,6 +80,14 @@ if "tasks" not in st.session_state:
                 "Deadline": "2026-09-25",
                 "Status": "Pending",
             },
+            {
+                "Task_ID": "T004",
+                "Employee": "Ayushi Agrawal",
+                "Task_Name": "CBBO Grant Sidhpura",
+                "Received_Date": "Not Yet",
+                "Deadline": "2026-09-25",
+                "Status": "Pending",
+            },
         ]
     )
 
