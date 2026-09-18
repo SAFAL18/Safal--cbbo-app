@@ -81,19 +81,18 @@ if "tasks" not in st.session_state:
                 "Status": "Pending",
             },
             {
-                "Task_ID": "T004",
-                "Employee": "Ayushi Agrawal",
-                "Date": "2026-09-18",
+               "Task_ID": "T004",
+            "Employee": "Ayushi Agrawal",
+            "Date": "2026-09-18",
             "CBBO_Name": "Ashok Agritech",
             "FPO_Name": "Narsinghpur FPO",
             "Grant_Name": "Grant 4",
             "Total_Documents": 10,
             "Completed_Documents": 4,
             "Progress_Percent": 40,
-            "Pending_Details": Rent Agreement Etc,
-            "Issues_Remarks": Document verification delayed due to stamp paper shortage,
+            "Pending_Details": "Rent Agreement Etc",
+            "Issues_Remarks": "Document verification delayed due to stamp paper shortage"
         }
-            },
         ]
     )
 
