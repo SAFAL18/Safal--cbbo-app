@@ -90,8 +90,8 @@ if "tasks" not in st.session_state:
             "Total_Documents": 10,
             "Completed_Documents": 4,
             "Progress_Percent": 40,
-            "Pending_Details": "Rent Agreement Etc",
-            "Issues_Remarks": "Document verification delayed due to stamp paper shortage"
+            "Pending_Details": Rent Agreement Etc,
+            "Issues_Remarks": Document verification delayed due to stamp paper shortage,
         }
             },
         ]
