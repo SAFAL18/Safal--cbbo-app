@@ -14,6 +14,8 @@ USER_CREDENTIALS = {
     "priya": {"password": "password456", "role": "Employee", "name": "Priya Verma"},
     "rahul": {"password": "password789", "role": "Employee", "name": "Rahul Singh"},
 }
+ "ayushi": {"password": "password123", "role": "Employee", "name": "Ayushi Agrawal"},
+}
 
 # --- LOGIN SCREEN ---
 if "logged_in" not in st.session_state:
