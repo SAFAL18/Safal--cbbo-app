@@ -84,7 +84,7 @@ st.markdown(f"""
     </div>
 """, unsafe_allow_html=True)
 
-# --- DATABASE STATE ---
+# --- DATABASE STATE (Storing File Bytes for Direct Opening/Downloading) ---
 if "tasks" not in st.session_state:
     st.session_state.tasks = pd.DataFrame([
         {
@@ -97,19 +97,8 @@ if "tasks" not in st.session_state:
             "Received_Date": today_str,
             "Status": "Pending",
             "Issues_Remarks": "Waiting for audit clearance",
-            "Document_Name": "None"
-        },
-        {
-            "Task_ID": "T-102",
-            "Employee": "Praveen",
-            "CBBO_Name": "Ashok Agritech",
-            "FPO_Name": "Narsinghpur FPO",
-            "Grant_Task": "Grant 4 Restricted Audit",
-            "Amount": 2500000,
-            "Received_Date": today_str,
-            "Status": "Completed",
-            "Issues_Remarks": "Confidential",
-            "Document_Name": "Audit_Report.pdf"
+            "Document_Name": "None",
+            "Document_Bytes": None
         }
     ])
 
@@ -124,7 +113,7 @@ else: # Admin
     menu = st.sidebar.selectbox("Navigation", ["Dashboard Overview", "Admin Dashboard", "Assign New Task", "Master Task Ledger"])
 
 
-# --- VIEW: DASHBOARD OVERVIEW (CARDS & METRICS) ---
+# --- VIEW: DASHBOARD OVERVIEW ---
 if menu == "Dashboard Overview":
     st.subheader("📊 Dashboard Overview & Recent Updates")
     
@@ -197,7 +186,9 @@ elif menu == "My Assigned Tasks":
         my_tasks = st.session_state.tasks[st.session_state.tasks["Employee"] == current_user_name]
     
     if not my_tasks.empty:
-        st.dataframe(my_tasks, use_container_width=True)
+        # Display table without bytes column
+        display_df = my_tasks.drop(columns=["Document_Bytes"])
+        st.dataframe(display_df, use_container_width=True)
         
         st.markdown("---")
         st.subheader("Update Status & Upload Document / PDF")
@@ -210,9 +201,12 @@ elif menu == "My Assigned Tasks":
             
             if st.form_submit_button("Save & Upload"):
                 doc_name = uploaded_file.name if uploaded_file else "No File Uploaded"
+                doc_bytes = uploaded_file.getvalue() if uploaded_file else None
+                
                 st.session_state.tasks.loc[st.session_state.tasks["Task_ID"] == selected_task_id, "Status"] = new_status
                 st.session_state.tasks.loc[st.session_state.tasks["Task_ID"] == selected_task_id, "Issues_Remarks"] = new_remark
                 st.session_state.tasks.loc[st.session_state.tasks["Task_ID"] == selected_task_id, "Document_Name"] = doc_name
+                st.session_state.tasks.loc[st.session_state.tasks["Task_ID"] == selected_task_id, "Document_Bytes"] = doc_bytes
                 st.success(f"Task updated successfully with document: {doc_name}!")
                 st.rerun()
     else:
@@ -240,7 +234,8 @@ elif menu == "Assign Sub-Task":
                 "Received_Date": today_str,
                 "Status": "Pending",
                 "Issues_Remarks": "Delegated by Rakesh",
-                "Document_Name": "None"
+                "Document_Name": "None",
+                "Document_Bytes": None
             }
             st.session_state.tasks = pd.concat([st.session_state.tasks, pd.DataFrame([new_row])], ignore_index=True)
             st.success("Sub-task successfully assigned!")
@@ -262,6 +257,8 @@ elif menu == "Submit Daily Progress":
         
         if st.form_submit_button("Submit Daily Report"):
             doc_name = uploaded_doc.name if uploaded_doc else "None"
+            doc_bytes = uploaded_doc.getvalue() if uploaded_doc else None
+            
             new_id = f"T-10{len(st.session_state.tasks) + 1}"
             new_entry = {
                 "Task_ID": new_id,
@@ -273,15 +270,39 @@ elif menu == "Submit Daily Progress":
                 "Received_Date": today_str,
                 "Status": status_in,
                 "Issues_Remarks": issues_in,
-                "Document_Name": doc_name
+                "Document_Name": doc_name,
+                "Document_Bytes": doc_bytes
             }
             st.session_state.tasks = pd.concat([st.session_state.tasks, pd.DataFrame([new_entry])], ignore_index=True)
             st.success("Daily progress & document submitted successfully!")
 
-# --- VIEW: ADMIN DASHBOARD ---
+# --- VIEW: ADMIN DASHBOARD (WITH FILE DOWNLOAD BUTTONS) ---
 elif menu == "Admin Dashboard":
     st.subheader("👑 Admin Performance & Activity Control Center")
-    st.dataframe(st.session_state.tasks, use_container_width=True)
+    st.markdown("### 📂 Uploaded Documents & Files Viewer")
+    
+    # Show file download buttons for admin
+    tasks_with_docs = st.session_state.tasks[st.session_state.tasks["Document_Name"] != "None"]
+    if tasks_with_docs.empty:
+        st.info("No documents uploaded by staff yet.")
+    else:
+        for _, row in tasks_with_docs.iterrows():
+            col_a, col_b, col_c = st.columns([2, 2, 2])
+            col_a.write(f"**Task ID:** {row['Task_ID']} ({row['FPO_Name']})")
+            col_b.write(f"**By:** {row['Employee']}")
+            if row["Document_Bytes"] is not None:
+                col_c.download_button(
+                    label=f"📥 Download {row['Document_Name']}",
+                    data=row["Document_Bytes"],
+                    file_name=row["Document_Name"],
+                    key=f"download_{row['Task_ID']}"
+                )
+            else:
+                col_c.write("No file bytes")
+
+    st.markdown("---")
+    st.subheader("📋 Master Task Ledger")
+    st.dataframe(st.session_state.tasks.drop(columns=["Document_Bytes"]), use_container_width=True)
 
 elif menu == "Assign New Task":
     st.subheader("➕ Assign Task / Grant to Staff")
@@ -308,11 +329,12 @@ elif menu == "Assign New Task":
                 "Received_Date": today_str,
                 "Status": "Pending",
                 "Issues_Remarks": "Assigned by Admin",
-                "Document_Name": "None"
+                "Document_Name": "None",
+                "Document_Bytes": None
             }
             st.session_state.tasks = pd.concat([st.session_state.tasks, pd.DataFrame([new_row])], ignore_index=True)
             st.success(f"Task successfully assigned to {employee_target}!")
 
 elif menu == "Master Task Ledger":
     st.subheader("📊 Complete Status & Grant Tracker")
-    st.dataframe(st.session_state.tasks, use_container_width=True)
+    st.dataframe(st.session_state.tasks.drop(columns=["Document_Bytes"]), use_container_width=True)
