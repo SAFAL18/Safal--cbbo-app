@@ -26,7 +26,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# --- USER CREDENTIALS & HIERARCHY DATABASE ---
+# --- USER CREDENTIALS & HIERARCHY ---
 USER_CREDENTIALS = {
     "admin": {"password": "adminpassword123", "role": "Admin", "name": "Admin Boss"},
     "ayushi": {"password": "ayushi123", "role": "Manager", "name": "Ayushi"},
@@ -84,7 +84,7 @@ st.markdown(f"""
     </div>
 """, unsafe_allow_html=True)
 
-# --- INITIALIZE DATABASE STATE ---
+# --- DATABASE STATE ---
 if "tasks" not in st.session_state:
     st.session_state.tasks = pd.DataFrame([
         {
@@ -113,26 +113,83 @@ if "tasks" not in st.session_state:
         }
     ])
 
-# --- NAVIGATION MENU BASED ON ROLES ---
+# --- NAVIGATION MENU ---
 if current_role == "Employee" and current_user_name == "Rakesh":
-    menu = st.sidebar.selectbox("Navigation", ["My Assigned Tasks", "Assign Sub-Task", "Submit Daily Progress"])
+    menu = st.sidebar.selectbox("Navigation", ["Dashboard Overview", "My Assigned Tasks", "Assign Sub-Task", "Submit Daily Progress"])
 elif current_role == "Employee" or current_role == "Manager":
-    menu = st.sidebar.selectbox("Navigation", ["My Assigned Tasks", "Submit Daily Progress"])
+    menu = st.sidebar.selectbox("Navigation", ["Dashboard Overview", "My Assigned Tasks", "Submit Daily Progress"])
 elif current_role == "Restricted":
     menu = st.sidebar.selectbox("Navigation", ["My Assigned Tasks"])
 else: # Admin
-    menu = st.sidebar.selectbox("Navigation", ["Admin Dashboard", "Assign New Task", "Master Task Ledger"])
+    menu = st.sidebar.selectbox("Navigation", ["Dashboard Overview", "Admin Dashboard", "Assign New Task", "Master Task Ledger"])
 
+
+# --- VIEW: DASHBOARD OVERVIEW (CARDS & METRICS) ---
+if menu == "Dashboard Overview":
+    st.subheader("📊 Dashboard Overview & Recent Updates")
+    
+    total_tasks = len(st.session_state.tasks)
+    came_today = len(st.session_state.tasks[st.session_state.tasks["Received_Date"] == today_str])
+    completed_t = len(st.session_state.tasks[st.session_state.tasks["Status"] == "Completed"])
+    pending_t = len(st.session_state.tasks[st.session_state.tasks["Status"] != "Completed"])
+    total_amt = st.session_state.tasks["Amount"].sum()
+
+    col1, col2, col3, col4 = st.columns(4)
+    col1.metric("Total Tasks", total_tasks)
+    col2.metric("Received Today", came_today)
+    col3.metric("Completed", completed_t)
+    col4.metric("Pending", pending_t)
+    
+    st.info(f"💰 Total Grant Funding Value: ₹{total_amt:,.2f}")
+    st.markdown("---")
+
+    card_col1, card_col2 = st.columns(2)
+    
+    with card_col1:
+        st.markdown("### ⚠️ Urgent Pending Tasks")
+        pending_df = st.session_state.tasks[st.session_state.tasks["Status"] != "Completed"]
+        if pending_df.empty:
+            st.caption("No pending tasks.")
+        else:
+            for _, row in pending_df.iterrows():
+                st.markdown(f"""
+                    <div class="card-pending">
+                        <div style="font-weight:bold; font-size:14px; color:#1f2937;">{row['Grant_Task']}</div>
+                        <div style="font-size:12px; color:#4b5563; margin-top:4px;">
+                            👤 {row['Employee']} &bull; 🏢 {row['FPO_Name']}
+                        </div>
+                        <div style="margin-top:8px;">
+                            <span style="background:#fef3c7; color:#92400e; padding:2px 10px; border-radius:12px; font-size:11px; font-weight:600;">{row['Status']}</span>
+                        </div>
+                    </div>
+                """, unsafe_allow_html=True)
+
+    with card_col2:
+        st.markdown("### 🏆 Latest Grant Applications")
+        recent_df = st.session_state.tasks.tail(3)
+        if recent_df.empty:
+            st.caption("No grant records found.")
+        else:
+            for _, row in recent_df.iterrows():
+                st.markdown(f"""
+                    <div class="card-granted">
+                        <div style="font-weight:bold; font-size:14px; color:#1f2937;">{row['FPO_Name']}</div>
+                        <div style="font-size:12px; color:#4b5563; margin-top:4px;">
+                            {row['Grant_Task']} (₹{row['Amount']:,.0f}) &bull; 👤 {row['Employee']}
+                        </div>
+                        <div style="margin-top:8px;">
+                            <span style="background:#dcfce7; color:#166534; padding:2px 10px; border-radius:12px; font-size:11px; font-weight:600;">{row['Status']}</span>
+                        </div>
+                    </div>
+                """, unsafe_allow_html=True)
 
 # --- VIEW: MY ASSIGNED TASKS ---
-if menu == "My Assigned Tasks":
+elif menu == "My Assigned Tasks":
     st.subheader(f"📋 Tasks & Grants Assigned to {current_user_name}")
     
-    # Visibility Filter: Praveen's tasks only visible to Admin. Rakesh can see his tasks & completed ones.
     if current_user_name == "Praveen":
         my_tasks = st.session_state.tasks[st.session_state.tasks["Employee"] == "Praveen"]
     elif current_user_name == "Rakesh":
-        # Rakesh can see his own tasks + completed tasks across team (except strict restrictions if any)
         my_tasks = st.session_state.tasks[(st.session_state.tasks["Employee"] == "Rakesh") | ((st.session_state.tasks["Status"] == "Completed") & (st.session_state.tasks["Employee"] != "Praveen"))]
     elif current_role == "Admin":
         my_tasks = st.session_state.tasks
@@ -161,10 +218,9 @@ if menu == "My Assigned Tasks":
     else:
         st.info("No tasks available in your view.")
 
-# --- RAKESH SUB-TASK ASSIGNMENT PORTAL ---
+# --- VIEW: RAKESH SUB-TASK ASSIGNMENT ---
 elif menu == "Assign Sub-Task":
     st.subheader("🔀 Rakesh's Task Delegation Portal")
-    st.markdown("Assign tasks or sub-responsibilities down the line.")
     
     with st.form("rakesh_assign"):
         sub_emp = st.selectbox("Assign To", ["Navneet", "Self / Field Team"])
@@ -222,30 +278,13 @@ elif menu == "Submit Daily Progress":
             st.session_state.tasks = pd.concat([st.session_state.tasks, pd.DataFrame([new_entry])], ignore_index=True)
             st.success("Daily progress & document submitted successfully!")
 
-# --- ADMIN DASHBOARD ---
+# --- VIEW: ADMIN DASHBOARD ---
 elif menu == "Admin Dashboard":
     st.subheader("👑 Admin Performance & Activity Control Center")
-    
-    total_tasks = len(st.session_state.tasks)
-    came_today = len(st.session_state.tasks[st.session_state.tasks["Received_Date"] == today_str])
-    submitted_completed = len(st.session_state.tasks[st.session_state.tasks["Status"] == "Completed"])
-    pending_work = len(st.session_state.tasks[st.session_state.tasks["Status"] != "Completed"])
-    total_grant_val = st.session_state.tasks["Amount"].sum()
-    
-    col1, col2, col3, col4 = st.columns(4)
-    col1.metric("Total Assigned Work", total_tasks)
-    col2.metric("Came / Given Today", came_today)
-    col3.metric("Submitted / Completed", submitted_completed)
-    col4.metric("Pending Workload", pending_work)
-    
-    st.info(f"💰 Total Tracked Grant Funding Value: ₹{total_grant_val:,.2f}")
-    st.markdown("---")
-
-    st.subheader("📋 Master Task, Grant & Document Ledger (Includes Praveen's Restricted Data)")
     st.dataframe(st.session_state.tasks, use_container_width=True)
 
 elif menu == "Assign New Task":
-    st.subheader("➕ Assign Task / Grant to Staff (Ayushi / Rakesh / Navneet / Praveen)")
+    st.subheader("➕ Assign Task / Grant to Staff")
     
     with st.form("assign_form"):
         col1, col2 = st.columns(2)
