@@ -84,7 +84,7 @@ st.markdown(f"""
     </div>
 """, unsafe_allow_html=True)
 
-# --- DATABASE STATE (Storing File Bytes for Direct Opening/Downloading) ---
+# --- DATABASE STATE ---
 if "tasks" not in st.session_state:
     st.session_state.tasks = pd.DataFrame([
         {
@@ -186,9 +186,7 @@ elif menu == "My Assigned Tasks":
         my_tasks = st.session_state.tasks[st.session_state.tasks["Employee"] == current_user_name]
     
     if not my_tasks.empty:
-        # Display table without bytes column
-        display_df = my_tasks.drop(columns=["Document_Bytes"])
-        st.dataframe(display_df, use_container_width=True)
+        st.dataframe(my_tasks.drop(columns=["Document_Bytes"], errors="ignore"), use_container_width=True)
         
         st.markdown("---")
         st.subheader("Update Status & Upload Document / PDF")
@@ -276,12 +274,11 @@ elif menu == "Submit Daily Progress":
             st.session_state.tasks = pd.concat([st.session_state.tasks, pd.DataFrame([new_entry])], ignore_index=True)
             st.success("Daily progress & document submitted successfully!")
 
-# --- VIEW: ADMIN DASHBOARD (WITH FILE DOWNLOAD BUTTONS) ---
+# --- VIEW: ADMIN DASHBOARD ---
 elif menu == "Admin Dashboard":
     st.subheader("👑 Admin Performance & Activity Control Center")
     st.markdown("### 📂 Uploaded Documents & Files Viewer")
     
-    # Show file download buttons for admin
     tasks_with_docs = st.session_state.tasks[st.session_state.tasks["Document_Name"] != "None"]
     if tasks_with_docs.empty:
         st.info("No documents uploaded by staff yet.")
@@ -290,7 +287,7 @@ elif menu == "Admin Dashboard":
             col_a, col_b, col_c = st.columns([2, 2, 2])
             col_a.write(f"**Task ID:** {row['Task_ID']} ({row['FPO_Name']})")
             col_b.write(f"**By:** {row['Employee']}")
-            if row["Document_Bytes"] is not None:
+            if row.get("Document_Bytes") is not None:
                 col_c.download_button(
                     label=f"📥 Download {row['Document_Name']}",
                     data=row["Document_Bytes"],
@@ -298,11 +295,11 @@ elif menu == "Admin Dashboard":
                     key=f"download_{row['Task_ID']}"
                 )
             else:
-                col_c.write("No file bytes")
+                col_c.write("No file attached")
 
     st.markdown("---")
     st.subheader("📋 Master Task Ledger")
-    st.dataframe(st.session_state.tasks.drop(columns=["Document_Bytes"]), use_container_width=True)
+    st.dataframe(st.session_state.tasks.drop(columns=["Document_Bytes"], errors="ignore"), use_container_width=True)
 
 elif menu == "Assign New Task":
     st.subheader("➕ Assign Task / Grant to Staff")
@@ -337,4 +334,4 @@ elif menu == "Assign New Task":
 
 elif menu == "Master Task Ledger":
     st.subheader("📊 Complete Status & Grant Tracker")
-    st.dataframe(st.session_state.tasks.drop(columns=["Document_Bytes"]), use_container_width=True)
+    st.dataframe(st.session_state.tasks.drop(columns=["Document_Bytes"], errors="ignore"), use_container_width=True)
